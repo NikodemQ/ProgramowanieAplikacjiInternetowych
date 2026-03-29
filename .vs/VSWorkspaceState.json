@@ -1,7 +1,8 @@
 {
   "ExpandedNodes": [
-    ""
+    "",
+    "\\Worker"
   ],
-  "SelectedNode": "\\Dockerfile",
+  "SelectedNode": "\\Worker\\Worker.cs",
   "PreviewInSolutionExplorer": false
 }
