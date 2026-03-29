@@ -1,9 +1,15 @@
 using System.Reflection;
 using WeatherTelemetryApi.Middleware;
+using WeatherTelemetryApi.Models;
+using WeatherTelemetryApi.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllers();
+
+builder.Services.Configure<RabbitMqSettings>(builder.Configuration.GetSection("RabbitMQ"));
+builder.Services.Configure<HmacSettings>(builder.Configuration.GetSection("Hmac"));
+builder.Services.AddSingleton<IRabbitMqPublisher, RabbitMqPublisher>();
 
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(options =>
