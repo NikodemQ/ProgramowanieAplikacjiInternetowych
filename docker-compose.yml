@@ -19,7 +19,7 @@ services:
 
   weather-api:
     build:
-      context: ./WeatherTelemetryApi/WeatherTelemetryApi
+      context: ./WeatherTelemetryApi
       dockerfile: Dockerfile
     container_name: weather-api
     ports:

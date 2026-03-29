@@ -1,0 +1,31 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WeatherTelemetryApi", "WeatherTelemetryApi\WeatherTelemetryApi.csproj", "{C2C000B2-19C6-4FF8-AEA1-1FFE111863BF}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TelemetryNotifier", "Web App\TelemetryNotifier.csproj", "{F079D05B-99BB-4952-9FE9-E56AC7CAD173}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{C2C000B2-19C6-4FF8-AEA1-1FFE111863BF}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C2C000B2-19C6-4FF8-AEA1-1FFE111863BF}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C2C000B2-19C6-4FF8-AEA1-1FFE111863BF}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C2C000B2-19C6-4FF8-AEA1-1FFE111863BF}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F079D05B-99BB-4952-9FE9-E56AC7CAD173}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F079D05B-99BB-4952-9FE9-E56AC7CAD173}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F079D05B-99BB-4952-9FE9-E56AC7CAD173}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F079D05B-99BB-4952-9FE9-E56AC7CAD173}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{C2C000B2-19C6-4FF8-AEA1-1FFE111863BF} = {9AEB1EF7-D5EF-49C4-A5F6-D1F7157CA5C7}
+	EndGlobalSection
+EndGlobal
