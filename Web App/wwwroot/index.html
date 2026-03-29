@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>System Telemetryczny – Powiadomienia</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/8.0.0/signalr.min.js"></script>
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        :root {
+            --bg:       #f5f5f0;
+            --surface:  #ffffff;
+            --border:   #e2e0d8;
+            --text:     #1a1a18;
+            --muted:    #6b6b65;
+            --ok:       #0f6e56;  --ok-bg:   #e1f5ee;
+            --info:     #185fa5;  --info-bg: #e6f1fb;
+            --warn:     #854f0b;  --warn-bg: #faeeda;
+            --crit:     #a32d2d;  --crit-bg: #fcebeb;
+            --sys:      #534ab7;  --sys-bg:  #eeedfe;
+            --radius:   10px;
+            --shadow:   0 1px 4px rgba(0,0,0,.06);
+        }
+
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* ── Nagłówek ── */
+        header {
+            background: var(--surface);
+            border-bottom: 1px solid var(--border);
+            padding: 16px 24px;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+        header h1 { font-size: 17px; font-weight: 600; }
+        header p  { font-size: 13px; color: var(--muted); }
+
+        .status-dot {
+            width: 10px; height: 10px;
+            border-radius: 50%;
+            background: #ccc;
+            flex-shrink: 0;
+            transition: background .3s;
+        }
+        .status-dot.connected    { background: #1D9E75; box-shadow: 0 0 0 3px #9FE1CB; }
+        .status-dot.disconnected { background: #E24B4A; box-shadow: 0 0 0 3px #F7C1C1; }
+        .status-dot.connecting   { background: #EF9F27; animation: pulse 1s infinite; }
+
+        @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+
+        /* ── Pasek narzędzi ── */
+        .toolbar {
+            background: var(--surface);
+            border-bottom: 1px solid var(--border);
+            padding: 10px 24px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        .toolbar label { font-size: 12px; color: var(--muted); }
+        .filter-btn {
+            font-size: 12px;
+            padding: 4px 12px;
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            background: var(--surface);
+            color: var(--muted);
+            cursor: pointer;
+            transition: all .15s;
+        }
+        .filter-btn:hover { border-color: #aaa; color: var(--text); }
+        .filter-btn.active {
+            background: var(--text);
+            color: var(--surface);
+            border-color: var(--text);
+        }
+        .spacer { flex: 1; }
+        .clear-btn {
+            font-size: 12px;
+            padding: 4px 12px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            background: transparent;
+            color: var(--muted);
+            cursor: pointer;
+        }
+        .clear-btn:hover { background: #f0f0ec; color: var(--text); }
+
+        /* ── Statystyki ── */
+        .stats-bar {
+            padding: 10px 24px;
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+        .stat-pill {
+            font-size: 12px;
+            padding: 3px 10px;
+            border-radius: 20px;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .stat-count {
+            font-size: 13px;
+            font-weight: 700;
+        }
+
+        /* ── Lista alertów ── */
+        .alerts-container {
+            flex: 1;
+            overflow-y: auto;
+            padding: 12px 24px 24px;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--muted);
+        }
+        .empty-state .icon { font-size: 40px; margin-bottom: 12px; }
+        .empty-state h3 { font-size: 16px; margin-bottom: 6px; }
+        .empty-state p  { font-size: 13px; }
+
+        /* ── Karta alertu ── */
+        .alert-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 14px 16px;
+            margin-bottom: 8px;
+            display: flex;
+            gap: 14px;
+            align-items: flex-start;
+            box-shadow: var(--shadow);
+            animation: slideIn .25s ease;
+        }
+        @keyframes slideIn {
+            from { opacity:0; transform: translateY(-8px); }
+            to   { opacity:1; transform: translateY(0); }
+        }
+
+        .alert-card.hidden { display: none; }
+
+        .alert-card.new-alert {
+            animation: highlight .8s ease;
+        }
+        @keyframes highlight {
+            0%   { border-color: var(--level-color, #aaa); box-shadow: 0 0 0 3px var(--level-glow, transparent); }
+            100% { border-color: var(--border); box-shadow: var(--shadow); }
+        }
+
+        .level-badge {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 52px;
+            height: 24px;
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: .5px;
+            text-transform: uppercase;
+            flex-shrink: 0;
+            margin-top: 2px;
+        }
+        .badge-ok     { background: var(--ok-bg);   color: var(--ok);   }
+        .badge-info   { background: var(--info-bg);  color: var(--info); }
+        .badge-warn   { background: var(--warn-bg);  color: var(--warn); }
+        .badge-crit   { background: var(--crit-bg);  color: var(--crit); }
+        .badge-system { background: var(--sys-bg);   color: var(--sys);  }
+
+        .alert-body { flex: 1; min-width: 0; }
+        .alert-top {
+            display: flex;
+            align-items: baseline;
+            justify-content: space-between;
+            gap: 8px;
+            margin-bottom: 4px;
+        }
+        .alert-check { font-size: 14px; font-weight: 600; }
+        .alert-time  { font-size: 11px; color: var(--muted); white-space: nowrap; }
+        .alert-message { font-size: 13px; color: var(--muted); line-height: 1.5; }
+        .alert-measurement {
+            display: inline-block;
+            font-size: 11px;
+            margin-top: 5px;
+            padding: 1px 8px;
+            border-radius: 4px;
+            background: var(--bg);
+            color: var(--muted);
+            border: 1px solid var(--border);
+        }
+
+        /* ── Panel testowy ── */
+        .test-panel {
+            background: var(--surface);
+            border-top: 1px solid var(--border);
+            padding: 14px 24px;
+        }
+        .test-panel summary {
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            user-select: none;
+            color: var(--muted);
+        }
+        .test-panel summary:hover { color: var(--text); }
+        .test-form {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-top: 10px;
+            align-items: flex-end;
+        }
+        .test-form input, .test-form select {
+            font-size: 13px;
+            padding: 6px 10px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            background: var(--bg);
+            color: var(--text);
+        }
+        .test-form input { flex: 1; min-width: 160px; }
+        .send-btn {
+            font-size: 13px;
+            padding: 6px 16px;
+            border: none;
+            border-radius: 6px;
+            background: var(--text);
+            color: var(--surface);
+            cursor: pointer;
+            font-weight: 600;
+        }
+        .send-btn:hover { opacity: .85; }
+        .send-btn:disabled { opacity: .4; cursor: not-allowed; }
+
+        /* ── Pasek połączenia ── */
+        .conn-bar {
+            font-size: 12px;
+            padding: 6px 24px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: var(--surface);
+            border-bottom: 1px solid var(--border);
+            color: var(--muted);
+        }
+        .conn-text { flex: 1; }
+        .reconnect-btn {
+            font-size: 12px;
+            padding: 3px 10px;
+            border: 1px solid var(--border);
+            border-radius: 5px;
+            background: transparent;
+            cursor: pointer;
+        }
+        .reconnect-btn:hover { background: var(--bg); }
+    </style>
+</head>
+<body>
+
+<header>
+    <div class="status-dot connecting" id="statusDot"></div>
+    <div>
+        <h1>System Telemetryczny – Centrum Powiadomień</h1>
+        <p id="statusText">Łączenie z serwerem...</p>
+    </div>
+</header>
+
+<div class="conn-bar">
+    <span class="conn-text" id="connInfo">Adres huba: <code>ws://localhost:5050/alertHub</code></span>
+    <button class="reconnect-btn" id="reconnectBtn" onclick="reconnect()" style="display:none">Połącz ponownie</button>
+</div>
+
+<div class="toolbar">
+    <label>Filtr poziomu:</label>
+    <button class="filter-btn active" data-level="all"  onclick="setFilter('all',  this)">Wszystkie</button>
+    <button class="filter-btn"        data-level="crit" onclick="setFilter('crit', this)">🔴 Krytyczne</button>
+    <button class="filter-btn"        data-level="warn" onclick="setFilter('warn', this)">🟡 Ostrzeżenia</button>
+    <button class="filter-btn"        data-level="info" onclick="setFilter('info', this)">🔵 Info</button>
+    <button class="filter-btn"        data-level="ok"   onclick="setFilter('ok',   this)">🟢 OK</button>
+    <div class="spacer"></div>
+    <button class="clear-btn" onclick="clearAlerts()">Wyczyść listę</button>
+</div>
+
+<div class="stats-bar" id="statsBar"></div>
+
+<div class="alerts-container" id="alertsList">
+    <div class="empty-state" id="emptyState">
+        <div class="icon">📡</div>
+        <h3>Brak alertów</h3>
+        <p>Oczekiwanie na dane z systemu telemetrycznego...</p>
+    </div>
+</div>
+
+<details class="test-panel">
+    <summary>Panel testowy (bez InfluxDB)</summary>
+    <div class="test-form">
+        <input type="text" id="testMsg" placeholder="Treść alertu testowego..." value="Przekroczona wartość progowa temperatury" />
+        <input type="text" id="testCheck" placeholder="Nazwa testu..." value="Test sprawdzenia" />
+        <select id="testLevel">
+            <option value="info">info</option>
+            <option value="warn">warn</option>
+            <option value="crit" selected>crit</option>
+            <option value="ok">ok</option>
+        </select>
+        <button class="send-btn" id="sendTestBtn" onclick="sendTest()" disabled>Wyślij alert</button>
+    </div>
+</details>
+
+<script>
+    let connection = null;
+    let allAlerts  = [];
+    let activeFilter = 'all';
+    const counts   = { ok: 0, info: 0, warn: 0, crit: 0 };
+
+    // ── Połączenie SignalR ──────────────────────────────────────────
+    function buildConnection() {
+        return new signalR.HubConnectionBuilder()
+            .withUrl('/alertHub')
+            .withAutomaticReconnect([1000, 2000, 5000, 10000])
+            .configureLogging(signalR.LogLevel.Information)
+            .build();
+    }
+
+    async function startConnection() {
+        connection = buildConnection();
+
+        connection.onreconnecting(() => setStatus('connecting', 'Ponowne łączenie...'));
+        connection.onreconnected(() => {
+            setStatus('connected', 'Połączono · Automatyczne ponowne połączenie');
+            document.getElementById('reconnectBtn').style.display = 'none';
+        });
+        connection.onclose(() => {
+            setStatus('disconnected', 'Rozłączono z serwerem');
+            document.getElementById('reconnectBtn').style.display = 'inline-block';
+            document.getElementById('sendTestBtn').disabled = true;
+        });
+
+        // Odbieranie alertów z SignalR
+        connection.on('ReceiveAlert', (alert) => {
+            addAlert(alert);
+        });
+
+        connection.on('AlertAcknowledged', (id) => {
+            console.log('[SignalR] Alert potwierdzony:', id);
+        });
+
+        try {
+            await connection.start();
+            setStatus('connected', `Połączono · ID: ${connection.connectionId?.slice(0, 8) ?? '?'}`);
+            document.getElementById('sendTestBtn').disabled = false;
+            document.getElementById('reconnectBtn').style.display = 'none';
+        } catch (err) {
+            setStatus('disconnected', 'Błąd połączenia: ' + err.message);
+            document.getElementById('reconnectBtn').style.display = 'inline-block';
+        }
+    }
+
+    async function reconnect() {
+        setStatus('connecting', 'Ponowne łączenie...');
+        await startConnection();
+    }
+
+    // ── Alerty ─────────────────────────────────────────────────────
+    function addAlert(alert) {
+        allAlerts.unshift(alert);
+
+        const level = (alert.level || 'info').toLowerCase();
+        if (!alert.isSystem && counts[level] !== undefined) counts[level]++;
+        renderStats();
+
+        const card = buildCard(alert, true);
+        const list = document.getElementById('alertsList');
+        document.getElementById('emptyState').style.display = 'none';
+        list.insertBefore(card, list.firstChild);
+
+        if (activeFilter !== 'all' && activeFilter !== level) {
+            card.classList.add('hidden');
+        }
+
+        // Usuń klasę animacji po chwili
+        setTimeout(() => card.classList.remove('new-alert'), 900);
+
+        // Ograniczenie do 100 alertów w DOM
+        const cards = list.querySelectorAll('.alert-card');
+        if (cards.length > 100) cards[cards.length - 1].remove();
+    }
+
+    function buildCard(alert, isNew) {
+        const level = (alert.level || 'info').toLowerCase();
+        const badgeClass = alert.isSystem ? 'badge-system' :
+            level === 'ok'   ? 'badge-ok'   :
+                level === 'warn' ? 'badge-warn'  :
+                    level === 'crit' ? 'badge-crit'  : 'badge-info';
+        const badgeText = alert.isSystem ? 'SYS' : level.toUpperCase();
+
+        const time = alert.time
+            ? new Date(alert.time).toLocaleTimeString('pl-PL', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+            : '';
+
+        const card = document.createElement('div');
+        card.className = 'alert-card' + (isNew ? ' new-alert' : '');
+        card.dataset.level = level;
+        card.dataset.id    = alert.id || '';
+        card.innerHTML = `
+      <span class="level-badge ${badgeClass}">${badgeText}</span>
+      <div class="alert-body">
+        <div class="alert-top">
+          <span class="alert-check">${esc(alert.checkName || 'Alert')}</span>
+          <span class="alert-time">${time}</span>
+        </div>
+        <div class="alert-message">${esc(alert.message || '')}</div>
+        ${alert.measurement ? `<span class="alert-measurement">📊 ${esc(alert.measurement)}</span>` : ''}
+      </div>`;
+        return card;
+    }
+
+    function esc(str) {
+        return String(str)
+            .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+            .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+
+    // ── Filtrowanie ─────────────────────────────────────────────────
+    function setFilter(level, btn) {
+        activeFilter = level;
+        document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+
+        document.querySelectorAll('.alert-card').forEach(card => {
+            if (level === 'all' || card.dataset.level === level) {
+                card.classList.remove('hidden');
+            } else {
+                card.classList.add('hidden');
+            }
+        });
+    }
+
+    function clearAlerts() {
+        allAlerts = [];
+        Object.keys(counts).forEach(k => counts[k] = 0);
+        document.getElementById('alertsList').innerHTML =
+            `<div class="empty-state" id="emptyState">
+         <div class="icon">📡</div>
+         <h3>Brak alertów</h3>
+         <p>Oczekiwanie na dane z systemu telemetrycznego...</p>
+       </div>`;
+        renderStats();
+    }
+
+    // ── Statystyki ──────────────────────────────────────────────────
+    function renderStats() {
+        const bar = document.getElementById('statsBar');
+        const total = Object.values(counts).reduce((a, b) => a + b, 0);
+        bar.innerHTML = `
+      <span class="stat-pill" style="background:var(--crit-bg);color:var(--crit)">
+        🔴 <span class="stat-count">${counts.crit}</span> krytycznych
+      </span>
+      <span class="stat-pill" style="background:var(--warn-bg);color:var(--warn)">
+        🟡 <span class="stat-count">${counts.warn}</span> ostrzeżeń
+      </span>
+      <span class="stat-pill" style="background:var(--info-bg);color:var(--info)">
+        🔵 <span class="stat-count">${counts.info}</span> info
+      </span>
+      <span class="stat-pill" style="background:var(--ok-bg);color:var(--ok)">
+        🟢 <span class="stat-count">${counts.ok}</span> ok
+      </span>
+      <span class="stat-pill" style="background:#f0f0ec;color:var(--muted)">
+        łącznie: <span class="stat-count">${total}</span>
+      </span>`;
+    }
+
+    // ── Test alertu (przez /webhook/test) ──────────────────────────
+    async function sendTest() {
+        const msg   = document.getElementById('testMsg').value.trim()   || 'Alert testowy';
+        const check = document.getElementById('testCheck').value.trim() || 'Test';
+        const level = document.getElementById('testLevel').value;
+
+        try {
+            const res = await fetch('/webhook/test', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ message: msg, checkName: check, level, isSystem: false })
+            });
+            if (!res.ok) throw new Error('HTTP ' + res.status);
+        } catch (e) {
+            alert('Błąd wysyłania: ' + e.message);
+        }
+    }
+
+    // ── Status UI ──────────────────────────────────────────────────
+    function setStatus(state, text) {
+        const dot  = document.getElementById('statusDot');
+        const txt  = document.getElementById('statusText');
+        dot.className = 'status-dot ' + state;
+        txt.textContent = text;
+    }
+
+    // ── Start ──────────────────────────────────────────────────────
+    renderStats();
+    startConnection();
+</script>
+</body>
+</html>
