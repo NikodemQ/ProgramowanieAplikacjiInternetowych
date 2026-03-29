@@ -17,6 +17,28 @@ services:
     volumes:
       - rabbitmq_data:/var/lib/rabbitmq
 
+  influxdb:
+    image: influxdb:2.7
+    container_name: weather-influxdb
+    ports:
+      - "8086:8086"
+    environment:
+      DOCKER_INFLUXDB_INIT_MODE: setup
+      DOCKER_INFLUXDB_INIT_USERNAME: admin
+      DOCKER_INFLUXDB_INIT_PASSWORD: admin12345
+      DOCKER_INFLUXDB_INIT_ORG: telemetry
+      DOCKER_INFLUXDB_INIT_BUCKET: weather
+      DOCKER_INFLUXDB_INIT_ADMIN_TOKEN: my-super-secret-admin-token
+    healthcheck:
+      test: ["CMD", "influx", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    volumes:
+      - influxdb_data:/var/lib/influxdb2
+      - influxdb_config:/etc/influxdb2
+
   weather-api:
     build:
       context: ./WeatherTelemetryApi
@@ -38,7 +60,50 @@ services:
       rabbitmq:
         condition: service_healthy
 
+  telemetry-worker:
+    build:
+      context: ./Worker/TelemetryWorker
+      dockerfile: Dockerfile
+    container_name: telemetry-worker
+    environment:
+      DOTNET_ENVIRONMENT: Production
+      RabbitMQ__Host: rabbitmq
+      RabbitMQ__Port: 5672
+      RabbitMQ__Username: guest
+      RabbitMQ__Password: guest
+      RabbitMQ__VirtualHost: /
+      RabbitMQ__ExchangeName: weather
+      RabbitMQ__Queue: telemetry.queue
+      RabbitMQ__Dlq: telemetry.dlq
+      Hmac__SecretKey: kocham-wsb
+      InfluxDB__Url: http://influxdb:8086
+      InfluxDB__Token: my-super-secret-admin-token
+      InfluxDB__Org: telemetry
+      InfluxDB__Bucket: weather
+      Notifier__Url: http://telemetry-notifier:5050
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      influxdb:
+        condition: service_healthy
+
+  telemetry-notifier:
+    build:
+      context: ./Web App
+      dockerfile: Dockerfile
+    container_name: telemetry-notifier
+    ports:
+      - "5050:5050"
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ASPNETCORE_URLS: http://+:5050
+    depends_on:
+      influxdb:
+        condition: service_healthy
+
 volumes:
   rabbitmq_data:
+  influxdb_data:
+  influxdb_config:
 
 

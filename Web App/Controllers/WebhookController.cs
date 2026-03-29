@@ -19,6 +19,24 @@ public class WebhookController : ControllerBase
     }
 
     /// <summary>
+    /// Endpoint odbierający powiadomienia o nowych odczytach z TelemetryWorker.
+    /// Worker → POST http://telemetry-notifier:5050/webhook/telemetry
+    /// </summary>
+    [HttpPost("telemetry")]
+    public async Task<IActionResult> ReceiveTelemetry([FromBody] AlertNotification notification)
+    {
+        notification.Time ??= DateTime.UtcNow.ToString("o");
+        notification.Level = notification.Level?.ToLowerInvariant() ?? "info";
+
+        _logger.LogInformation("[Webhook-Telemetry] Odczyt: {CheckName} – {Message}",
+            notification.CheckName, notification.Message);
+
+        await _hub.Clients.All.SendAsync("ReceiveAlert", notification);
+
+        return Ok(new { status = "accepted", alertId = notification.Id });
+    }
+
+    /// <summary>
     /// Endpoint odbierający webhooki z InfluxDB.
     /// InfluxDB → POST http://localhost:5050/webhook/influx
     /// </summary>

@@ -1,23 +1,34 @@
+using TelemetryWorker.Services;
+
 namespace TelemetryWorker;
 
 public class Worker : BackgroundService
 {
+    private readonly RabbitConsumer _consumer;
     private readonly ILogger<Worker> _logger;
 
-    public Worker(ILogger<Worker> logger)
+    public Worker(RabbitConsumer consumer, ILogger<Worker> logger)
     {
+        _consumer = consumer;
         _logger = logger;
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        while (!stoppingToken.IsCancellationRequested)
+        _logger.LogInformation("TelemetryWorker uruchamia się...");
+
+        try
         {
-            if (_logger.IsEnabled(LogLevel.Information))
-            {
-                _logger.LogInformation("Worker running at: {time}", DateTimeOffset.Now);
-            }
-            await Task.Delay(1000, stoppingToken);
+            await _consumer.StartAsync(stoppingToken);
+        }
+        catch (OperationCanceledException)
+        {
+            _logger.LogInformation("TelemetryWorker zatrzymany.");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogCritical(ex, "Krytyczny błąd w TelemetryWorker!");
+            throw;
         }
     }
 }

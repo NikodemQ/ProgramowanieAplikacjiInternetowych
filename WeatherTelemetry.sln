@@ -7,6 +7,10 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WeatherTelemetryApi", "Weat
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TelemetryNotifier", "Web App\TelemetryNotifier.csproj", "{F079D05B-99BB-4952-9FE9-E56AC7CAD173}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Worker", "Worker", "{D3063F4B-AEFD-40E4-A09B-417757D18BCD}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TelemetryWorker", "Worker\TelemetryWorker\TelemetryWorker.csproj", "{A91D79E2-2341-4BA9-8A99-0042B18806C1}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -24,8 +28,13 @@ Global
 		{F079D05B-99BB-4952-9FE9-E56AC7CAD173}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{F079D05B-99BB-4952-9FE9-E56AC7CAD173}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{F079D05B-99BB-4952-9FE9-E56AC7CAD173}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A91D79E2-2341-4BA9-8A99-0042B18806C1}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A91D79E2-2341-4BA9-8A99-0042B18806C1}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A91D79E2-2341-4BA9-8A99-0042B18806C1}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A91D79E2-2341-4BA9-8A99-0042B18806C1}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{C2C000B2-19C6-4FF8-AEA1-1FFE111863BF} = {9AEB1EF7-D5EF-49C4-A5F6-D1F7157CA5C7}
+		{A91D79E2-2341-4BA9-8A99-0042B18806C1} = {D3063F4B-AEFD-40E4-A09B-417757D18BCD}
 	EndGlobalSection
 EndGlobal
